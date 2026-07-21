@@ -1,0 +1,7 @@
+{
+  "label": "HYPR demoscene radio",
+  "icon": "/mnt/SDCARD/App/Hypr/icon.png",
+  "iconsel": "/mnt/SDCARD/App/Hypr/iconsel.png",
+  "launch": "launch.sh",
+  "description": "80s-vaporwave player for hypr.website"
+}

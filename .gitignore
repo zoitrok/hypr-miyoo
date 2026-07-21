@@ -1,0 +1,14 @@
+build/
+dist/
+
+# Fetched by tools/fetch-deps.sh -- pinned and checksummed, not vendored.
+third_party/mbedtls/
+third_party/.cache/
+
+# Recorded fixtures can be large; keep small curated ones with -f if wanted.
+fixtures/*.mp3
+fixtures/*.jsonl
+
+*.o
+*.d
+log.txt

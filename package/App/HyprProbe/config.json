@@ -1,0 +1,7 @@
+{
+  "label": "Hypr Probe",
+  "icon": "/mnt/SDCARD/App/HyprProbe/icon.png",
+  "iconsel": "/mnt/SDCARD/App/HyprProbe/iconsel.png",
+  "launch": "launch.sh",
+  "description": "One-off hardware probe (writes log.txt)"
+}
