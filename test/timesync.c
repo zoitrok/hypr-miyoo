@@ -40,5 +40,31 @@ int main(void)
     CHECK(!timesync_parse_http_date("", &t), "empty rejected");
     CHECK(!timesync_parse_http_date("Mon, 20 Jul", &t), "truncated rejected");
 
+    /* Forward-only adoption is the entire security argument for taking the time
+     * from an unauthenticated HTTP header, so it gets pinned down here rather
+     * than left to a network test that cannot choose its inputs. */
+    const time_t NOW = 1785801600L;   /* 2026-08-05 */
+
+    CHECK(timesync_should_adopt(NOW + 86400L * 21, NOW),
+          "a clock three weeks behind is corrected");
+    CHECK(timesync_should_adopt(NOW + 3600, NOW),
+          "an hour behind is corrected");
+
+    /* Rewinding is what would let a spoofed Date revive an expired certificate,
+     * so it must never happen -- not by a month, not by a second. */
+    CHECK(!timesync_should_adopt(NOW - 86400L * 21, NOW),
+          "a clock three weeks ahead is not rewound");
+    CHECK(!timesync_should_adopt(NOW - 1, NOW),
+          "a clock one second ahead is not rewound");
+
+    /* Request latency and rounding must not make every launch rewrite the
+     * clock, but the tolerance has to stay far below any certificate margin. */
+    CHECK(!timesync_should_adopt(NOW + 30, NOW),
+          "30s of skew is left alone");
+    CHECK(!timesync_should_adopt(NOW, NOW),
+          "an exactly-correct clock is left alone");
+    CHECK(timesync_should_adopt(NOW + 61, NOW),
+          "61s of skew is corrected");
+
     TAP_DONE();
 }

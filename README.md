@@ -66,6 +66,11 @@ Other things worth knowing before changing code:
 - **The device has no battery-backed RTC.** `time(NULL)` is arbitrary until NTP runs.
   Everything that measures elapsed time uses `mono_ms()`, and song progress is derived
   from a server clock offset estimated over the WebSocket ping/pong round-trip.
+  `src/net/timesync.c` corrects the wall clock from an HTTP `Date` header on every
+  launch, and only ever moves it forward. Do not shortcut that to "only when the clock
+  reads 1970": the firmware restores the timestamp from the last shutdown, so a device
+  that sat unused boots weeks behind — set, believable, and stale enough to reject a
+  freshly issued certificate as *not yet valid*.
 - **The audio stream arrives chunked.** nginx re-frames the Icecast stream as
   `Transfer-Encoding: chunked`; `src/net/http.c` strips that. Feeding chunk-length
   lines to an MP3 decoder produces periodic clicks rather than an obvious failure.

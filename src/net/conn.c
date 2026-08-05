@@ -152,7 +152,12 @@ static void set_open_err(const char *msg)
  * bootstrap host unreachable), the choice is between ignoring the date window
  * and not running at all.
  *
- * We ignore only the dates, and only while the clock is known to be unset.
+ * We ignore only the dates, and only while the clock is known to be unusable --
+ * which is timesync's judgement, not a plausibility test here. A clock can read
+ * a perfectly believable date and still be weeks stale, and a stale clock
+ * rejects a freshly issued certificate as "not yet valid"; that case is fixed
+ * by correcting the clock, not by relaxing the check, so it must not land here.
+ *
  * Chain-to-pinned-root, signature and hostname checks all still apply, so a
  * certificate must still genuinely be for this host and issued by ISRG -- just
  * possibly expired. That is a far smaller concession than the alternative
@@ -163,7 +168,7 @@ static int verify_cb(void *user, mbedtls_x509_crt *crt, int depth, uint32_t *fla
     (void)crt;
     (void)depth;
 
-    if (timesync_clock_is_plausible())
+    if (timesync_dates_are_trustworthy())
         return 0;
 
     uint32_t dates = *flags & (MBEDTLS_X509_BADCERT_EXPIRED |
@@ -171,7 +176,8 @@ static int verify_cb(void *user, mbedtls_x509_crt *crt, int depth, uint32_t *fla
     if (dates) {
         *flags &= ~dates;
         LOGW(TAG, "ignoring certificate validity dates at depth %d: the system "
-                  "clock is unset, so the dates cannot be checked", depth);
+                  "clock could not be established, so the dates cannot be "
+                  "checked", depth);
     }
     return 0;
 }
@@ -606,13 +612,19 @@ conn_t *conn_open(conn_tls_ctx_t *tls, const url_t *url, int timeout_ms)
 
         /* A certificate that is "expired" or "not yet valid" on a device with
          * no RTC almost always means the clock is wrong, not the certificate.
-         * Saying so turns a baffling TLS error into an obvious one. */
+         * Saying so -- and printing the clock as a date rather than an epoch
+         * count, since being off by weeks is the whole point -- turns a baffling
+         * TLS error into an obvious one. */
         if (flags & (MBEDTLS_X509_BADCERT_EXPIRED | MBEDTLS_X509_BADCERT_FUTURE)) {
             time_t now_wall = time(NULL);
+            struct tm tm;
+            char when[32] = "?";
+            if (gmtime_r(&now_wall, &tm))
+                strftime(when, sizeof(when), "%Y-%m-%d %H:%M:%SZ", &tm);
             LOGE(TAG, "certificate rejected on validity dates while the system "
-                      "clock reads %ld -- this is a clock problem, not a "
+                      "clock reads %s -- this is a clock problem, not a "
                       "certificate problem, if the network time sync has not "
-                      "run yet", (long)now_wall);
+                      "run or could not correct the clock", when);
         }
 
         snprintf(c->err, sizeof(c->err), "certificate verification failed: %s", why);
