@@ -12,3 +12,5 @@ fixtures/*.jsonl
 *.o
 *.d
 log.txt
+
+__pycache__/

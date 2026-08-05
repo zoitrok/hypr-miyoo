@@ -5,6 +5,7 @@
 #   make deps            fetch + build third-party sources (run once)
 #   make test            build and run the native unit tests
 #   make package         assemble the OnionOS App directory into dist/
+#   make release         build for the device and zip it for distribution
 #   make clean           remove build output for the current TARGET
 #
 # The device build must run inside the union toolchain container
@@ -12,6 +13,11 @@
 # which sets CROSS_COMPILE and PATH.
 
 TARGET ?= desktop
+
+# The one place the release version is written. package/README.txt picks it up
+# through @VERSION@, and the tag, zip name and staging directory all derive from
+# it, so a release cannot ship with its parts disagreeing about what it is.
+VERSION := 0.1.1
 
 BUILD    := build/$(TARGET)
 BIN      := $(BUILD)/bin
@@ -180,6 +186,29 @@ do-package-probe: $(BIN)/probe
 	$(STRIP) dist/App/HyprProbe/probe
 	chmod +x dist/App/HyprProbe/launch.sh dist/App/HyprProbe/probe
 	@echo "packaged -> dist/App/HyprProbe (copy to /mnt/SDCARD/App/)"
+
+# -------------------------------------------------------------------- release
+
+# The v0.1 zip was assembled by hand, which left its README.txt existing only
+# inside the published archive -- nothing in the repo could reproduce it. This
+# target is the whole job instead: build for the device, stage, zip.
+RELEASE_NAME := hypr-demoscene-radio-v$(VERSION)
+RELEASE_ZIP  := dist/$(RELEASE_NAME).zip
+RELEASE_STAGE := dist/$(RELEASE_NAME)
+
+.PHONY: release
+release:
+	@$(MAKE) TARGET=device do-package
+	rm -rf $(RELEASE_STAGE) $(RELEASE_ZIP)
+	mkdir -p $(RELEASE_STAGE)
+	cp -r dist/App $(RELEASE_STAGE)/App
+	cp LICENSE $(RELEASE_STAGE)/LICENSE
+	rm -rf $(RELEASE_STAGE)/App/HyprProbe
+	sed 's/@VERSION@/v$(VERSION)/' package/README.txt > $(RELEASE_STAGE)/README.txt
+	./tools/mkzip.py $(RELEASE_STAGE) $(RELEASE_ZIP)
+	rm -rf $(RELEASE_STAGE)
+	@echo "release -> $(RELEASE_ZIP)"
+	@unzip -l $(RELEASE_ZIP)
 
 # ---------------------------------------------------------------------- clean
 

@@ -33,6 +33,20 @@ make package                 # dist/App/Hypr      -> copy to /mnt/SDCARD/App/
 make package-probe           # dist/App/HyprProbe -> one-off hardware probe
 ```
 
+To cut a release, bump `VERSION` in the Makefile, write
+`docs/release-notes/v<version>.md`, then:
+
+```sh
+make release                 # dist/hypr-demoscene-radio-v<version>.zip
+python3 tools/gh-release.py  # tag, publish, upload the asset
+```
+
+`make release` is reproducible — fixed timestamps and sorted entries, so the same
+source always yields a byte-identical zip and an asset can be checked against the
+tag it claims to come from. `tools/gh-release.py` authenticates from
+`$GITHUB_TOKEN`, `$GH_TOKEN`, or a logged-in `gh`, and is idempotent: re-running it
+reuses the release and replaces the asset.
+
 This is the same GCC 8.3 toolchain the
 [union toolchain](https://github.com/shauninman/union-miyoomini-toolchain) image wraps,
 extracted directly rather than through Docker — the image only ever downloads and
